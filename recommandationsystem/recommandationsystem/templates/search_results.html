@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Search Results for "{{ query }}"</h2>
+    
+    <div id="product-list">
+        {% for product in results %}
+            <div class="product">
+                <h3>{{ product.name }}</h3>
+                <p>{{ product.description }}</p>
+                <p><strong>Price:</strong> ${{ product.price }}</p>
+                <p><strong>Category:</strong> {{ product.category }}</p>
+            </div>
+        {% endfor %}
+    </div>
+
+
+{% endblock %}

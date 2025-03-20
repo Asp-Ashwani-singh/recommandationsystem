@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Product Search{% endblock %}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        .search-box { width: 100%; padding: 10px; margin-bottom: 20px; }
+        .recommendations { border: 1px solid #ddd; background: #f9f9f9; padding: 10px; display: none; position: absolute; width: 96%; max-height: 200px; overflow-y: auto; }
+        .recommendations div { padding: 5px; cursor: pointer; }
+        .recommendations div:hover { background: #eee; }
+        .product { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; }
+        .pagination { text-align: center; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Product Search & Recommendations</h1>
+        <form method="GET" action="{% url 'search' %}">
+            <input class="search-box" type="text" id="search-input" name="q" placeholder="Search products..." autocomplete="off" value="{{ query }}">
+            <button type="submit">Search</button>
+        </form>
+        
+        <div class="recommendations" id="recommendations-box"></div>
+
+        <div id="product-list">
+            {% block content %}{% endblock %}
+        </div>
+
+        <div class="pagination">
+            <button id="load-more-btn" data-page="2">Load More</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const searchInput = document.getElementById("search-input");
+            const recommendationsBox = document.getElementById("recommendations-box");
+            const loadMoreBtn = document.getElementById("load-more-btn");
+
+            // Fetch Recommendations as User Types
+            searchInput.addEventListener("input", function() { 
+                const query = searchInput.value.trim();
+                if (query.length > 1) {
+                    fetch(`/search/?q=${query}`, {
+                        headers: { "X-Requested-With": "XMLHttpRequest" }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        recommendationsBox.innerHTML = "";
+                        if (data.products.length > 0) {
+                            recommendationsBox.style.display = "block";
+                            data.products.forEach(product => {
+                                let div = document.createElement("div");
+                                div.textContent = `${product.name} - $${product.price} (${product.category})`;
+                                div.addEventListener("click", function() {
+                                    searchInput.value = product.name;
+                                    recommendationsBox.style.display = "none";
+                                });
+                                recommendationsBox.appendChild(div);
+                            });
+                        } else {
+                            recommendationsBox.style.display = "none";
+                        }
+                    })
+                    .catch(error => console.error("Error fetching search results:", error));
+                } else {
+                    recommendationsBox.style.display = "none";
+                }
+            });
+
+            // Close Recommendations Box on Click Outside
+            document.addEventListener("click", function(event) {
+                if (!searchInput.contains(event.target) && !recommendationsBox.contains(event.target)) {
+                    recommendationsBox.style.display = "none";
+                }
+            });
+
+            // Pagination - Load More Products
+            loadMoreBtn.addEventListener("click", function() {
+                let page = loadMoreBtn.getAttribute("data-page");
+                let query = searchInput.value.trim();
+
+                fetch(`/search/?q=${query}&page=${page}`, {
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    let productList = document.getElementById("product-list");
+
+                    // Append new products
+                    data.products.forEach(product => {
+                        let div = document.createElement("div");
+                        div.classList.add("product");
+                        div.innerHTML = `<h3>${product.name}</h3><p>${product.category}</p><p><strong>Price:</strong> $${product.price}</p>`;
+                        productList.appendChild(div);
+                    });
+
+                    // Update pagination
+                    if (data.has_next) {
+                        loadMoreBtn.setAttribute("data-page", data.next_page);
+                    } else {
+                        loadMoreBtn.style.display = "none";
+                    }
+                })
+                .catch(error => console.error("Error loading more products:", error));
+            });
+        });
+    </script>
+
+</body>
+</html>
